@@ -1,0 +1,14 @@
+[Unit]
+Description=ESP32 PC Monitor Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/esp32-monitor
+ExecStart=/usr/bin/python3 /opt/esp32-monitor/ubuntu_agent.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
