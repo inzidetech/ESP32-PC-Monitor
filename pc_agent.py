@@ -536,6 +536,47 @@ def create_image():
     draw.ellipse((24, 24, 40, 40), fill=(255, 0, 128)) # Círculo rosa
     return image
 
+# -------------------------------------------------------------------------
+# FUNCIONES DE INICIO AUTOMÁTICO (CARPETA STARTUP DE WINDOWS)
+# -------------------------------------------------------------------------
+def check_autostart():
+    startup_dir = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+    shortcut_path = os.path.join(startup_dir, "ESP32-MONITOR.lnk")
+    return os.path.exists(shortcut_path)
+        
+is_autostart = check_autostart()
+
+def set_autostart(enable=True):
+    startup_dir = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+    shortcut_path = os.path.join(startup_dir, "ESP32-MONITOR.lnk")
+    
+    try:
+        if enable:
+            target = sys.executable
+            # Usar PowerShell para crear un acceso directo limpio y evitar falsos positivos de antivirus
+            ps_script = f"""
+$WshShell = New-Object -comObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut('{shortcut_path}')
+$Shortcut.TargetPath = '{target}'
+$Shortcut.WorkingDirectory = '{os.path.dirname(target)}'
+$Shortcut.Save()
+"""
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            if os.path.exists(shortcut_path):
+                try:
+                    os.remove(shortcut_path)
+                except Exception:
+                    pass
+    except Exception as e:
+        print("Error configuring autostart:", e)
+
+def toggle_autostart(icon, item):
+    global is_autostart
+    is_autostart = not is_autostart
+    set_autostart(is_autostart)
+    icon.update_menu()
+
 def toggle_pause(icon, item):
     global PAUSED
     PAUSED = not PAUSED
@@ -570,6 +611,7 @@ if __name__ == "__main__":
     if HAS_GUI:
         menu = pystray.Menu(
             pystray.MenuItem("ESP32 Monitor", lambda: None, enabled=False),
+            pystray.MenuItem("Iniciar con Windows", toggle_autostart, checked=lambda item: is_autostart),
             pystray.MenuItem(lambda text: "Reanudar Envío" if PAUSED else "Pausar Envío", toggle_pause),
             pystray.MenuItem("Salir", quit_app)
         )
